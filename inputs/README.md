@@ -2,4 +2,4 @@
 
 HOWTO:
 1. Поместить pdf файлы в эту директорию
-2. Запустить src/data_prepare.py из директории src
+2. Запустить src/prepare_index.py из директории src

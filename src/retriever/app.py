@@ -13,7 +13,7 @@ logger = logging.getLogger('Embedder')
 
 logger.info('Loading model...')
 
-model = Embedder.from_resources_path('cointegrated/rubert-tiny2', device='cpu')
+model = Embedder.from_resources_path('BAAI/bge-m3', device='cpu')
 model.eval()
 
 document_embeddings_df = pd.read_csv('data/database.csv')

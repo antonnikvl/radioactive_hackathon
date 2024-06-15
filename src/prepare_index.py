@@ -6,9 +6,21 @@ import re
 import tqdm
 import pandas as pd
 import numpy as np
-
+import json
 from retriever.embedder import Embedder
 
+# load json from definitions.json
+definitions = None
+with open('definitions.json', 'r', encoding='utf-8') as f:
+    definitions = json.load(f)
+    definitions = {item['short']: item['def'] for item in definitions['list']}
+
+def replace_definitions(text):
+    pattern = re.compile(r'\b(' + '|'.join(re.escape(key) for key in definitions.keys()) + r')\b')
+    def replacement(match):
+        return definitions[match.group(0)]
+    result = pattern.sub(replacement, text)
+    return result
 
 def list_files_with_ext(
     path: str,
@@ -200,11 +212,12 @@ def process_xml(
             results = results_words
     return results
 
+np.set_printoptions(threshold=np.inf)
 def embed_texts(
     texts: tp.Iterable
 ) -> tp.List[np.ndarray]:
     model = Embedder.from_resources_path(
-        resources_path='cointegrated/rubert-tiny2',
+        resources_path='BAAI/bge-m3',
         device='cpu'
     )
     responses = []
@@ -231,7 +244,10 @@ def main():
     files = list_files_with_ext(data_dir, ".xml")
     output = []
     for file in tqdm.tqdm(files):
-        output += process_xml(file)
+        tmp = process_xml(file)
+        for elem in tmp:
+            elem["text"] = replace_definitions(elem["text"])
+            output.append(elem)
 
     # Build DataFrame
     df = pd.DataFrame(output, columns=["document", "id", "text", "images", "pages"])
