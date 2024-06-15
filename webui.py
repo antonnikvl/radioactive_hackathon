@@ -16,6 +16,15 @@ url = "http://127.0.0.1:11434/v1/chat/completions"
 
 headers={ 'Content-type': 'application/json' }
 
+# read three lines from config.txt and use as url + header params
+try:
+    with open("config.txt", "r") as f:
+        url = f.readline().strip()
+        headers["CF-Access-Client-Id"] = f.readline().strip()
+        headers["CF-Access-Client-Secret"] = f.readline().strip()
+except Exception as e:
+    pass
+
 def generate(system_prompt, dialog, temperature, max_tokens, model):
     messages = [{"role": "system", "content": system_prompt}]
     messages += dialog
