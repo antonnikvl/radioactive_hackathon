@@ -2,3 +2,4 @@
 __pycache__
 src/data
 inputs/*.pdf
+config.txt
