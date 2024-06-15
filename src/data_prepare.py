@@ -22,7 +22,7 @@ def pdf_to_xml(path, output_dir):
     with open(path, 'rb') as f:
         extract_text_to_fp(inf=f, outfp=open(output, 'wb'), output_dir=output_path, layout=False, output_type='xml', codec='utf-8')
 
-def process_xml(path, simple_split = -1):
+def process_xml(path, word_split = -1, long_text_fallback = 2000):
     basename = os.path.basename(path).replace(".xml", "")
     # open xml file read into tree
     tree = ET.parse(path)
@@ -93,8 +93,12 @@ def process_xml(path, simple_split = -1):
             continue
         filtered_elem_list.append(element)
     
-    results = []
-    if simple_split > 0:
+    results_words = []
+    
+    if word_split > 0 or long_text_fallback > 0:
+        actual_split = word_split
+        if actual_split < 0:
+            actual_split = 200
         # go through all elements, concatenating text and listing images, until length of the text gets above simpel_split. Then append data to results and start filling again
         text = ""
         images = []
@@ -106,15 +110,16 @@ def process_xml(path, simple_split = -1):
             elif element.tag == "text":
                 text += element.text
                 pages.add(int(element.attrib["page"]))
-                if len(text.split(' ')) > simple_split:
-                    results.append({"document": str(basename), "id": str(basename) + "/" + str(idx), "text": text, "images": images, "pages": pages})
+                if len(text.split(' ')) > actual_split:
+                    results_words.append({"document": str(basename), "id": str(basename) + "/" + str(idx), "text": text, "images": images, "pages": pages})
                     text = ""
                     images = []
                     pages = set()
                     idx += 1
         if len(text) > 0:
-            results.append({"document": str(basename), "id": str(basename) + "/" + str(idx), "text": text, "images": images, "pages": pages})
-        return results
+            results_words.append({"document": str(basename), "id": str(basename) + "/" + str(idx), "text": text, "images": images, "pages": pages})
+        if word_split > 0:
+            return results_words
 
     # replace sequence of more than one periods in chapter_names with as single | symbol
     chapter_names = re.sub(r"\.\.+", "|", chapter_names)
@@ -134,6 +139,7 @@ def process_xml(path, simple_split = -1):
     images = []
     pages = set()
     idx = 0
+    results = []
     for element in filtered_elem_list:
         if element.tag == "text":
             if float(element.attrib["size"]) > top_size + 0.5:
@@ -160,6 +166,13 @@ def process_xml(path, simple_split = -1):
             images += [element.attrib["src"]]
     if contains_text:
         results.append({"document": str(basename), "id": str(basename) + "/" + str(idx), "text": text, "images": images, "pages": pages})
+    
+    if long_text_fallback > 0:
+        max_len = -1
+        for r in results:
+            max_len = max(max_len, len(r["text"]))
+        if max_len > long_text_fallback:
+            results = results_words
     return results
 
 def main():
