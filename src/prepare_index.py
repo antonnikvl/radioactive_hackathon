@@ -1,12 +1,22 @@
 import os
+import typing as tp
 from pdfminer.high_level import extract_pages, extract_text_to_fp
 import xml.etree.ElementTree as ET
 import re
 import tqdm
 import pandas as pd
+import numpy as np
 
-# list files in folder and choose ones with pdf extension 
-def list_files_with_ext(path, ext):
+from retriever.embedder import Embedder
+
+
+def list_files_with_ext(
+    path: str,
+    ext: str
+    ) -> tp.List[str]:
+    """
+        List files in folder and choose ones with pdf extension
+    """
     result = []
     for file in os.listdir(path):
         if file.endswith(ext):
@@ -14,7 +24,14 @@ def list_files_with_ext(path, ext):
             result.append(os.path.join(path, file))
     return result
 
-def pdf_to_xml(path, output_dir):
+
+def pdf_to_xml(
+    path: str,
+    output_dir: str
+    ) -> None:
+    """
+        Transform PDF's into XML's
+    """
     output = os.path.join(output_dir, os.path.basename(path).replace(".pdf", ".xml"))
     output_path = os.path.join(output_dir, os.path.basename(output)).replace(".xml", "")
     if not os.path.exists(output_path):
@@ -22,7 +39,15 @@ def pdf_to_xml(path, output_dir):
     with open(path, 'rb') as f:
         extract_text_to_fp(inf=f, outfp=open(output, 'wb'), output_dir=output_path, layout=False, output_type='xml', codec='utf-8')
 
-def process_xml(path, word_split = -1, long_text_fallback = 2000):
+
+def process_xml(
+    path: str,
+    word_split: int = -1,
+    long_text_fallback: int = 2000
+    ) -> tp.List[tp.Any]:
+    """
+        Parse XML's into separate sub-documents (index)
+    """
     basename = os.path.basename(path).replace(".xml", "")
     # open xml file read into tree
     tree = ET.parse(path)
@@ -175,9 +200,25 @@ def process_xml(path, word_split = -1, long_text_fallback = 2000):
             results = results_words
     return results
 
+def embed_texts(
+    texts: tp.Iterable
+) -> tp.List[np.ndarray]:
+    model = Embedder.from_resources_path(
+        resources_path='cointegrated/rubert-tiny2',
+        device='cpu'
+    )
+    responses = []
+    for text in tqdm.tqdm(texts):
+        resp = model(text)
+        responses.append(resp)
+    
+    return responses
+
 def main():
     in_dir = "../inputs"
     data_dir = "data"
+
+    
 
     # convert each file to xml in data folder, also extract images from pdf
     files = list_files_with_ext(in_dir, ".pdf")
@@ -192,9 +233,15 @@ def main():
     for file in tqdm.tqdm(files):
         output += process_xml(file)
 
-    # save to csv
+    # Build DataFrame
     df = pd.DataFrame(output, columns=["document", "id", "text", "images", "pages"])
-    df.to_csv("data/database.csv")
+
+    # Embed texts
+    embeddings = embed_texts(df['text'].values)
+    df['embeddings'] = embeddings
+
+    # Save to CSV
+    df.to_csv("data/database.csv", index=False)
 
 if __name__ == "__main__":
     main()

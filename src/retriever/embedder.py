@@ -22,6 +22,7 @@ class Embedder(nn.Module):
         self._device = device
 
         self._model.to(self._device)
+        self._model.eval()
 
     @staticmethod
     def from_resources_path(resources_path: str, device: tp.Optional[str] = None) -> "Embedder":

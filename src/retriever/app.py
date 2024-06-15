@@ -9,12 +9,11 @@ import numpy as np
 import pandas as pd
 
 
-logger = logging.getLogger('embedder_split_encoder')
-model_path = Path('/components/embedders/split_encoder')
+logger = logging.getLogger('Embedder')
 
 logger.info('Loading model...')
 
-model = Embedder.from_resources_path('resources', device='cpu')
+model = Embedder.from_resources_path('cointegrated/rubert-tiny2', device='cpu')
 model.eval()
 
 document_embeddings_df = pd.read_csv('documents.csv')
