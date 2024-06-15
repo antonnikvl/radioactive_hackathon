@@ -16,9 +16,9 @@ logger.info('Loading model...')
 model = Embedder.from_resources_path('cointegrated/rubert-tiny2', device='cpu')
 model.eval()
 
-document_embeddings_df = pd.read_csv('documents.csv')
-document_ids = document_embeddings_df['document_id'].values
-document_embeddings = np.array([np.fromstring(emb[1:-1], sep=',') for emb in document_embeddings_df['embedding']])
+document_embeddings_df = pd.read_csv('data/database.csv')
+document_ids = document_embeddings_df['id'].values
+document_embeddings = np.array([np.fromstring(emb[1:-1].replace("\n", ""), sep=' ') for emb in document_embeddings_df['embeddings']])
 
 logger.info('Model loaded')
 app = flask.Flask(__name__)
@@ -49,19 +49,16 @@ def predict():
 	text_emb = model(text)
 	print(text_emb.shape, document_embeddings.shape)
 	similarities = np.dot(document_embeddings, text_emb)
-	print(similarities)
-	print(np.argsort(similarities)[::-1])
-	print(np.sort(similarities)[::-1])
 
 	top_k = 5
 	top_k_indices = np.argsort(similarities)[-top_k:][::-1]
 
-	print(top_k_indices.tolist())
+	#print(top_k_indices.tolist())
 
 	top_k_doc_ids = [document_ids[i] for i in top_k_indices]
 
-	for i in range(top_k):
-		print(top_k_indices.tolist()[i], document_ids[top_k_indices.tolist()[i]])
+	#for i in range(top_k):
+	#	print(top_k_indices.tolist()[i], document_ids[top_k_indices.tolist()[i]])
 
 	return flask.jsonify({'TopDocumentIds': top_k_doc_ids})
 
@@ -96,8 +93,8 @@ def update():
 	text = data['File'][0]
 
 	document_embeddings_df = pd.read_csv(text)
-	document_ids = document_embeddings_df['document_id'].values
-	document_embeddings = np.array([np.fromstring(emb[1:-1], sep=',') for emb in document_embeddings_df['embedding']])
+	document_ids = document_embeddings_df['id'].values
+	document_embeddings = np.array([np.fromstring(emb[1:-1].replace("\n", ""), sep=' ') for emb in document_embeddings_df['embeddings']])
 
 	return flask.Response(status=200, response='ok')
 
