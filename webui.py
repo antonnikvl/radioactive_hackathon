@@ -78,18 +78,27 @@ def retrive_docs(message):
     docs = response.json()['TopDocumentIds']
     # retrieve docs from df using ids from docs list
     result = df.loc[df['id'].isin(docs)]['text'].tolist()
-    # references = []
-    # images = []
-    # for d in docs:
-    #     doc = df.loc[df['id'] == d]
-    #     print(doc)
-    return '\n\n'.join(result)
+    references = []
+    images = []
+    try:
+        for d in docs:
+            doc = df.loc[df['id'] == d]
+            p_val = doc["pages"].values[0].replace('{', '').replace('}', '')
+            p_val = ', '.join(map(lambda x: str(int(x) + 1), p_val.split(', ')))
+            references.append(f'"{doc["document"].values[0]}" стр {p_val}\n')
+            if len(doc["images"]) > 0:
+                images.append(doc['images'].values[0])
+    except Exception:
+        pass
+    return ['\n\n'.join(result), references, images]
 
 def process(message, chat_history, system_prompt=system_prompt, corrector_prompt="", temperature = 0.3, max_tokens=1024, model=available_models[0]):
     op_call_response = "К сожалению, я не могу отетить на ваш вопрос автоматически. Обращение передано оператору."
     message = replace_definitions(message)
     if len(chat_history) == 0:
         documentation = retrive_docs(message)
+        references = documentation[1]
+        documentation = documentation[0]
         if debug:
             print("*********************")
             print(documentation)
@@ -106,7 +115,8 @@ def process(message, chat_history, system_prompt=system_prompt, corrector_prompt
             print("CALL OPERATOR: ", message)
             yield op_call_response
         else:
-            yield final_response
+            refs = '\n'.join([('- ' + r) for r in references])
+            yield final_response + f"\n### Потенциально полезная документация:\n {refs}\n "
     else:
         messages = []
         for request, response in chat_history:
@@ -130,7 +140,7 @@ if __name__ == "__main__":
         process,
         title="Система тех. поддержки пользователей",
         description="Чат с ИИ-ассистентом",
-        chatbot=gr.Chatbot(label="История переписки",),
+        chatbot=gr.Chatbot(label="История переписки", scale=3),
         textbox=gr.Textbox(placeholder="Введите текст", container=False, scale=7),
         retry_btn="Сгенерировать ответ заново",
         clear_btn="Очистить",
